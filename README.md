@@ -56,7 +56,7 @@ The techniques shown are for **defensive understanding only** — to help develo
 
 ### Attribution
 
-- Based on the [OWASP Top 10 (2025)](https://owasp.org/Top10/) by the OWASP Foundation
+- Based on the [OWASP Top 10 (2025)](https://owasp.org/projects/top-ten) by the OWASP Foundation
 - Not affiliated with or endorsed by the OWASP Foundation
 - Real-world breach examples cited for educational context only
 
