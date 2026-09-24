@@ -2,18 +2,104 @@
    OWASP TOP 10 VISUALISED — Interactive Script
    ============================================================ */
 
+// --- Jargon Glossary Data ---
+// Each entry's `match` strings are matched case-insensitively, whole-word,
+// wherever they appear in prose (code/terminal blocks are left untouched
+// so simulated attack output still reads like real output). Declared at
+// top level (not inside DOMContentLoaded) so glossary.html can render the
+// full reference list from this same array after loading this script.
+const GLOSSARY_TERMS = [
+  { match: ['SSRF', 'Server-Side Request Forgery'], text: 'Server-Side Request Forgery — tricking a server into making a request to a URL the attacker chooses, reaching internal-only services (like cloud metadata endpoints) that trust requests coming from the server itself.' },
+  { match: ['IDOR', 'Insecure Direct Object Reference'], text: 'Insecure Direct Object Reference — an endpoint takes a raw ID (like a user ID) from the request and serves that record without checking whether the requester actually owns or is allowed to see it.' },
+  { match: ['CORS', 'Cross-Origin Resource Sharing'], text: "Cross-Origin Resource Sharing — a browser mechanism controlling which other websites may read a site's API responses. A wildcard (*) misconfiguration lets any website read authenticated responses." },
+  { match: ['CWE', 'CWEs', 'Common Weakness Enumeration'], text: "Common Weakness Enumeration — a community-maintained catalog of common software weakness types (e.g. 'improper input validation'), used to classify vulnerability categories." },
+  { match: ['CVE', 'CVEs', 'Common Vulnerabilities and Exposures'], text: 'Common Vulnerabilities and Exposures — a public, uniquely-numbered catalog entry (e.g. CVE-2021-44228) for a specific known vulnerability, used to reference it unambiguously across tools and reports.' },
+  { match: ['PII', 'Personally Identifiable Information'], text: 'Personally Identifiable Information — any data that can identify a specific person (name, SSN, email, etc.). Exposing it is what triggers most data-breach laws and fines.' },
+  { match: ['WAF', 'Web Application Firewall'], text: "Web Application Firewall — a filter in front of a web app that blocks known attack patterns in incoming traffic. It's a safety net, not a substitute for fixing the underlying vulnerability." },
+  { match: ['GDPR', 'General Data Protection Regulation'], text: "General Data Protection Regulation — the EU's data-protection law, allowing fines of up to €20M or 4% of global revenue for mishandling personal data." },
+  { match: ['MFA', 'Multi-Factor Authentication'], text: "Multi-Factor Authentication — requiring more than just a password to log in (e.g. a code from an app or a hardware key), so a leaked password alone isn't enough to break in." },
+  { match: ['APT', 'Advanced Persistent Threat'], text: 'Advanced Persistent Threat — a well-resourced attacker (often nation-state backed) that stays inside a target’s systems for a long time, rather than a smash-and-grab attack.' },
+  { match: ['LDAP', 'Lightweight Directory Access Protocol'], text: 'Lightweight Directory Access Protocol — a protocol for looking up directory information (like usernames). Log4Shell abused a Java feature that could load and execute code from an LDAP server.' },
+  { match: ['JNDI', 'Java Naming and Directory Interface'], text: "Java Naming and Directory Interface — a Java API for looking up resources (including via LDAP). Log4Shell exploited Log4j's JNDI lookups to fetch and run attacker-controlled code." },
+  { match: ['SBOM', 'Software Bill of Materials'], text: 'Software Bill of Materials — a complete, machine-readable inventory of every component (including transitive dependencies) in a piece of software.' },
+  { match: ['SLSA', 'Supply-chain Levels for Software Artifacts'], text: 'Supply-chain Levels for Software Artifacts — a framework of increasing security maturity levels for verifying a software artifact was actually built from the source code it claims to be.' },
+  { match: ['IAM', 'Identity and Access Management'], text: 'Identity and Access Management — the system of policies controlling who (or what service) is allowed to do what, used for permissions on cloud accounts and infrastructure.' },
+  { match: ['CSP', 'Content-Security-Policy'], text: 'Content-Security-Policy — a response header telling the browser which sources of scripts, styles and other resources are allowed to load, blocking many injection-based attacks.' },
+  { match: ['HSTS', 'Strict-Transport-Security'], text: 'Strict-Transport-Security — a response header that forces browsers to only ever connect to a site over HTTPS, even if a user types or clicks an http:// link.' },
+  { match: ['JWT', 'JSON Web Token'], text: 'JSON Web Token — a signed, self-contained token format commonly used to represent a logged-in session or an API credential.' },
+  { match: ['SSN', 'Social Security Number'], text: "Social Security Number — a US government-issued personal ID number. Combined with a name and email, it's one of the most valuable pieces of data for identity theft." },
+  { match: ['DTO', 'DTOs', 'Data Transfer Object'], text: 'Data Transfer Object — a small, purpose-built object carrying only the fields a client actually needs, instead of a raw database row that may include sensitive columns.' },
+  { match: ['UUIDs', 'UUID', 'Universally Unique Identifiers', 'Universally Unique Identifier'], text: 'Universally Unique Identifier — a long, effectively unpredictable ID (e.g. f47ac10b-58cc...), used instead of sequential numbers (1, 2, 3...) so IDs can’t be easily guessed.' },
+  { match: ['GCP', 'Google Cloud Platform'], text: "Google Cloud Platform — Google's cloud computing platform, an alternative to AWS or Azure." },
+  { match: ['SCA', 'Software Composition Analysis'], text: "Software Composition Analysis — automated scanning of a project's dependencies to find known vulnerabilities, licence issues or malicious packages." },
+  { match: ['IaC', 'Infrastructure as Code'], text: 'Infrastructure as Code — defining servers, networks and cloud config in version-controlled files (e.g. Terraform) instead of clicking through a cloud console, so environments are reproducible.' },
+  { match: ['CDN', 'Content Delivery Network'], text: 'Content Delivery Network — a distributed network of servers that caches and serves static content from a location close to the user.' },
+  { match: ['DoS', 'Denial of Service'], text: 'Denial of Service — an attack (or bug) that makes a system unavailable to legitimate users, by overwhelming it with traffic or triggering a crash or resource exhaustion.' },
+  { match: ['OWASP', 'Open Web Application Security Project'], text: 'Open Web Application Security Project — a nonprofit foundation publishing free, community-driven resources on web application security, including the Top 10 list this site is based on.' },
+  { match: ['ACLs', 'ACL', 'Access Control Lists', 'Access Control List'], text: 'Access Control List — a list of rules attached directly to a resource (like a storage bucket) specifying who can access it. IAM policies are the more manageable, centralised alternative.' },
+  { match: ['Amazon S3', 'S3', 'Simple Storage Service'], text: "Amazon S3 (Simple Storage Service) — AWS's object storage service, commonly used for backups, file uploads and static hosting. Misconfigured buckets are a frequent source of public data leaks." },
+  { match: ['CI/CD', 'Continuous Integration/Continuous Deployment'], text: "Continuous Integration/Continuous Deployment — the automated pipeline that builds, tests and ships code changes. Because it has broad access to source and secrets, it's a high-value attack target." },
+  { match: ['Amazon Web Services', 'AWS'], text: 'Amazon Web Services — the cloud computing platform operated by Amazon, offering services like S3 (storage) and EC2 (compute).' },
+  { match: ['typosquatting', 'typosquat'], text: "Publishing a malicious package with a name deliberately similar to a popular one (e.g. 'lodahs' instead of 'lodash'), hoping developers mistype it during install." },
+  { match: ['dependency confusion'], text: "Publishing a public package with the same name as an internal company package, tricking misconfigured build tools into installing the attacker's public version instead." },
+  { match: ['allowlist'], text: 'A list of explicitly permitted values (domains, IPs, packages) — everything not on the list is denied by default. The opposite of a blocklist, which tries to deny known-bad values instead.' },
+  { match: ['transitive dependencies', 'transitive dependency'], text: "A dependency your project didn't install directly — it was pulled in automatically because one of your direct dependencies depends on it. Most of a project's dependency tree is transitive." },
+  { match: ['lock file', 'lockfile'], text: 'A file (like package-lock.json) that pins the exact resolved version of every dependency — direct and transitive — so every install produces an identical dependency tree.' },
+  { match: ['postinstall'], text: 'A script a package can define to run automatically right after `npm install` completes, with no explicit user action — a common vector for malicious packages to run code immediately.' },
+  { match: ['provenance'], text: "Verifiable proof of where a software artifact came from and how it was built — which source commit, which build system — so consumers can confirm it wasn't tampered with." },
+  { match: ['reconnaissance'], text: 'The information-gathering phase of an attack — probing a target to find exposed files, technologies in use and other useful leads before attempting exploitation.' },
+  { match: ['threat modelling', 'threat modeling'], text: "A design-time exercise where a team systematically asks 'what could go wrong here and who would want to abuse it?' before writing code, instead of discovering flaws after launch." },
+  { match: ['deserialization'], text: 'Converting stored or transmitted data back into a live object in memory. Doing this on untrusted input can let an attacker construct objects that execute code.' },
+  { match: ['egress proxy'], text: 'A controlled gateway that all outbound (server-to-internet) requests must pass through, so they can be inspected, logged and restricted — a key defense against SSRF.' },
+  { match: ['anti-rebinding', 'rebinding'], text: "DNS rebinding — a technique where a domain's DNS record is changed after a security check passes, pointing it at an internal/private IP so a later request reaches an internal service unexpectedly." },
+  { match: ['enumeration', 'enumerate'], text: 'Systematically trying many possible values (IDs, usernames, paths) against a target to see which ones exist or return data — often scripted, as with sequential ID enumeration.' },
+  { match: ['brute-force'], text: 'Repeatedly guessing credentials (passwords, tokens) by trying many possibilities in sequence until one works, rather than exploiting a specific flaw.' },
+  { match: ['Log4Shell'], text: 'The nickname for CVE-2021-44228, a critical remote-code-execution vulnerability in the widely used Log4j Java logging library, exploited via crafted strings that trigger a JNDI/LDAP lookup.' }
+];
+
 document.addEventListener('DOMContentLoaded', () => {
 
-  // --- Disclosure Banner ---
-  window.dismissBanner = () => {
-    const banner = document.getElementById('disclosureBanner');
-    banner.classList.add('dismissed');
-    localStorage.setItem('owasp-disclosure-dismissed', 'true');
-  };
+  // --- Disclosure Modal ---
+  // A true modal (backdrop + centered card), dismissible via the button,
+  // Escape, or a backdrop click — persisted so it only ever shows once per
+  // browser. Unlike a persistent banner it can't be left open indefinitely,
+  // and while open it locks body scroll and traps Tab on its one control.
+  (function initDisclosureModal() {
+    const modal = document.getElementById('disclosureBanner');
+    if (!modal) return;
+    const STORAGE_KEY = 'owasp-disclosure-dismissed';
+    const dismissBtn = modal.querySelector('.disclosure-dismiss');
 
-  if (localStorage.getItem('owasp-disclosure-dismissed') === 'true') {
-    document.getElementById('disclosureBanner').classList.add('dismissed');
-  }
+    window.dismissBanner = () => {
+      modal.classList.add('dismissed');
+      document.body.style.overflow = '';
+      localStorage.setItem(STORAGE_KEY, 'true');
+    };
+
+    if (localStorage.getItem(STORAGE_KEY) === 'true') {
+      modal.classList.add('dismissed');
+      return;
+    }
+
+    document.body.style.overflow = 'hidden';
+    if (dismissBtn) dismissBtn.focus();
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) window.dismissBanner();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (modal.classList.contains('dismissed')) return;
+      if (e.key === 'Escape') {
+        window.dismissBanner();
+      } else if (e.key === 'Tab') {
+        // Only one focusable control exists in the modal — keep focus
+        // pinned there instead of letting Tab reach the page behind it.
+        e.preventDefault();
+        if (dismissBtn) dismissBtn.focus();
+      }
+    });
+  })();
 
   // --- Theme Toggle (auto / light / dark) ---
   (function initThemeToggle() {
@@ -309,58 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
   })();
 
   // --- Jargon Glossary ---
-  // Each entry's `match` strings are matched case-insensitively, whole-word,
-  // wherever they appear in prose (code/terminal blocks are left untouched
-  // so simulated attack output still reads like real output).
-  const GLOSSARY_TERMS = [
-    { match: ['SSRF', 'Server-Side Request Forgery'], text: 'Server-Side Request Forgery — tricking a server into making a request to a URL the attacker chooses, reaching internal-only services (like cloud metadata endpoints) that trust requests coming from the server itself.' },
-    { match: ['IDOR', 'Insecure Direct Object Reference'], text: 'Insecure Direct Object Reference — an endpoint takes a raw ID (like a user ID) from the request and serves that record without checking whether the requester actually owns or is allowed to see it.' },
-    { match: ['CORS', 'Cross-Origin Resource Sharing'], text: "Cross-Origin Resource Sharing — a browser mechanism controlling which other websites may read a site's API responses. A wildcard (*) misconfiguration lets any website read authenticated responses." },
-    { match: ['CWE', 'CWEs', 'Common Weakness Enumeration'], text: "Common Weakness Enumeration — a community-maintained catalog of common software weakness types (e.g. 'improper input validation'), used to classify vulnerability categories." },
-    { match: ['CVE', 'CVEs', 'Common Vulnerabilities and Exposures'], text: 'Common Vulnerabilities and Exposures — a public, uniquely-numbered catalog entry (e.g. CVE-2021-44228) for a specific known vulnerability, used to reference it unambiguously across tools and reports.' },
-    { match: ['PII', 'Personally Identifiable Information'], text: 'Personally Identifiable Information — any data that can identify a specific person (name, SSN, email, etc.). Exposing it is what triggers most data-breach laws and fines.' },
-    { match: ['WAF', 'Web Application Firewall'], text: "Web Application Firewall — a filter in front of a web app that blocks known attack patterns in incoming traffic. It's a safety net, not a substitute for fixing the underlying vulnerability." },
-    { match: ['GDPR', 'General Data Protection Regulation'], text: "General Data Protection Regulation — the EU's data-protection law, allowing fines of up to €20M or 4% of global revenue for mishandling personal data." },
-    { match: ['MFA', 'Multi-Factor Authentication'], text: "Multi-Factor Authentication — requiring more than just a password to log in (e.g. a code from an app or a hardware key), so a leaked password alone isn't enough to break in." },
-    { match: ['APT', 'Advanced Persistent Threat'], text: 'Advanced Persistent Threat — a well-resourced attacker (often nation-state backed) that stays inside a target’s systems for a long time, rather than a smash-and-grab attack.' },
-    { match: ['LDAP', 'Lightweight Directory Access Protocol'], text: 'Lightweight Directory Access Protocol — a protocol for looking up directory information (like usernames). Log4Shell abused a Java feature that could load and execute code from an LDAP server.' },
-    { match: ['JNDI', 'Java Naming and Directory Interface'], text: "Java Naming and Directory Interface — a Java API for looking up resources (including via LDAP). Log4Shell exploited Log4j's JNDI lookups to fetch and run attacker-controlled code." },
-    { match: ['SBOM', 'Software Bill of Materials'], text: 'Software Bill of Materials — a complete, machine-readable inventory of every component (including transitive dependencies) in a piece of software.' },
-    { match: ['SLSA', 'Supply-chain Levels for Software Artifacts'], text: 'Supply-chain Levels for Software Artifacts — a framework of increasing security maturity levels for verifying a software artifact was actually built from the source code it claims to be.' },
-    { match: ['IAM', 'Identity and Access Management'], text: 'Identity and Access Management — the system of policies controlling who (or what service) is allowed to do what, used for permissions on cloud accounts and infrastructure.' },
-    { match: ['CSP', 'Content-Security-Policy'], text: 'Content-Security-Policy — a response header telling the browser which sources of scripts, styles and other resources are allowed to load, blocking many injection-based attacks.' },
-    { match: ['HSTS', 'Strict-Transport-Security'], text: 'Strict-Transport-Security — a response header that forces browsers to only ever connect to a site over HTTPS, even if a user types or clicks an http:// link.' },
-    { match: ['JWT', 'JSON Web Token'], text: 'JSON Web Token — a signed, self-contained token format commonly used to represent a logged-in session or an API credential.' },
-    { match: ['SSN', 'Social Security Number'], text: "Social Security Number — a US government-issued personal ID number. Combined with a name and email, it's one of the most valuable pieces of data for identity theft." },
-    { match: ['DTO', 'DTOs', 'Data Transfer Object'], text: 'Data Transfer Object — a small, purpose-built object carrying only the fields a client actually needs, instead of a raw database row that may include sensitive columns.' },
-    { match: ['UUIDs', 'UUID', 'Universally Unique Identifiers', 'Universally Unique Identifier'], text: 'Universally Unique Identifier — a long, effectively unpredictable ID (e.g. f47ac10b-58cc...), used instead of sequential numbers (1, 2, 3...) so IDs can’t be easily guessed.' },
-    { match: ['GCP', 'Google Cloud Platform'], text: "Google Cloud Platform — Google's cloud computing platform, an alternative to AWS or Azure." },
-    { match: ['SCA', 'Software Composition Analysis'], text: "Software Composition Analysis — automated scanning of a project's dependencies to find known vulnerabilities, licence issues or malicious packages." },
-    { match: ['IaC', 'Infrastructure as Code'], text: 'Infrastructure as Code — defining servers, networks and cloud config in version-controlled files (e.g. Terraform) instead of clicking through a cloud console, so environments are reproducible.' },
-    { match: ['CDN', 'Content Delivery Network'], text: 'Content Delivery Network — a distributed network of servers that caches and serves static content from a location close to the user.' },
-    { match: ['DoS', 'Denial of Service'], text: 'Denial of Service — an attack (or bug) that makes a system unavailable to legitimate users, by overwhelming it with traffic or triggering a crash or resource exhaustion.' },
-    { match: ['OWASP', 'Open Web Application Security Project'], text: 'Open Web Application Security Project — a nonprofit foundation publishing free, community-driven resources on web application security, including the Top 10 list this site is based on.' },
-    { match: ['ACLs', 'ACL', 'Access Control Lists', 'Access Control List'], text: 'Access Control List — a list of rules attached directly to a resource (like a storage bucket) specifying who can access it. IAM policies are the more manageable, centralised alternative.' },
-    { match: ['Amazon S3', 'S3', 'Simple Storage Service'], text: "Amazon S3 (Simple Storage Service) — AWS's object storage service, commonly used for backups, file uploads and static hosting. Misconfigured buckets are a frequent source of public data leaks." },
-    { match: ['CI/CD', 'Continuous Integration/Continuous Deployment'], text: "Continuous Integration/Continuous Deployment — the automated pipeline that builds, tests and ships code changes. Because it has broad access to source and secrets, it's a high-value attack target." },
-    { match: ['Amazon Web Services', 'AWS'], text: 'Amazon Web Services — the cloud computing platform operated by Amazon, offering services like S3 (storage) and EC2 (compute).' },
-    { match: ['typosquatting', 'typosquat'], text: "Publishing a malicious package with a name deliberately similar to a popular one (e.g. 'lodahs' instead of 'lodash'), hoping developers mistype it during install." },
-    { match: ['dependency confusion'], text: "Publishing a public package with the same name as an internal company package, tricking misconfigured build tools into installing the attacker's public version instead." },
-    { match: ['allowlist'], text: 'A list of explicitly permitted values (domains, IPs, packages) — everything not on the list is denied by default. The opposite of a blocklist, which tries to deny known-bad values instead.' },
-    { match: ['transitive dependencies', 'transitive dependency'], text: "A dependency your project didn't install directly — it was pulled in automatically because one of your direct dependencies depends on it. Most of a project's dependency tree is transitive." },
-    { match: ['lock file', 'lockfile'], text: 'A file (like package-lock.json) that pins the exact resolved version of every dependency — direct and transitive — so every install produces an identical dependency tree.' },
-    { match: ['postinstall'], text: 'A script a package can define to run automatically right after `npm install` completes, with no explicit user action — a common vector for malicious packages to run code immediately.' },
-    { match: ['provenance'], text: "Verifiable proof of where a software artifact came from and how it was built — which source commit, which build system — so consumers can confirm it wasn't tampered with." },
-    { match: ['reconnaissance'], text: 'The information-gathering phase of an attack — probing a target to find exposed files, technologies in use and other useful leads before attempting exploitation.' },
-    { match: ['threat modelling', 'threat modeling'], text: "A design-time exercise where a team systematically asks 'what could go wrong here and who would want to abuse it?' before writing code, instead of discovering flaws after launch." },
-    { match: ['deserialization'], text: 'Converting stored or transmitted data back into a live object in memory. Doing this on untrusted input can let an attacker construct objects that execute code.' },
-    { match: ['egress proxy'], text: 'A controlled gateway that all outbound (server-to-internet) requests must pass through, so they can be inspected, logged and restricted — a key defense against SSRF.' },
-    { match: ['anti-rebinding', 'rebinding'], text: "DNS rebinding — a technique where a domain's DNS record is changed after a security check passes, pointing it at an internal/private IP so a later request reaches an internal service unexpectedly." },
-    { match: ['enumeration', 'enumerate'], text: 'Systematically trying many possible values (IDs, usernames, paths) against a target to see which ones exist or return data — often scripted, as with sequential ID enumeration.' },
-    { match: ['brute-force'], text: 'Repeatedly guessing credentials (passwords, tokens) by trying many possibilities in sequence until one works, rather than exploiting a specific flaw.' },
-    { match: ['Log4Shell'], text: 'The nickname for CVE-2021-44228, a critical remote-code-execution vulnerability in the widely used Log4j Java logging library, exploited via crafted strings that trigger a JNDI/LDAP lookup.' }
-  ];
-
+  // GLOSSARY_TERMS itself is declared at the top of this file (outside this
+  // handler) so glossary.html can reuse it after loading this same script.
   (function initGlossary() {
     const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -380,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // matching literal syntax (e.g. JSON field names) instead of prose.
     const skipTags = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'BUTTON', 'A']);
     const skipSelector = '.site-header, .disclosure-banner, .vuln-nav, .site-footer, ' +
-      '.code-header, .mock-devtools, .mock-browser, .db-header, .code-badge-fixed, .pipeline-diagram, .dep-node';
+      '.code-header, .mock-devtools, .mock-browser, .db-header, .code-badge-fixed, .pipeline-diagram, .dep-node, .glossary-term';
 
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
