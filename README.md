@@ -10,7 +10,7 @@ Unlike hacking playgrounds (Juice Shop, WebGoat) where you exploit a live app, t
 
 ## Viewing it
 
-Open `index.html` in any modern browser. That's it — no build, no server, no dependencies.
+Open [OWASP Top 10 (2025) Visualised](https://labs.codebykevin.dev/owasp-visual/) in any modern browser. That's it — no build, no server, no dependencies.
 
 Each vulnerability (A01–A10) walks through the same 5-step story: the normal flow, the vulnerable code, the attack, the impact, and the fix — shown from multiple perspectives (code, database, DevTools, fixed code, defense principles). Dark/light theming follows your OS setting by default, with a manual toggle to override.
 
